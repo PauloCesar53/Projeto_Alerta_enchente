@@ -81,12 +81,30 @@ void vDisplayTask(void *params)
     {
         if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
         {
-            uint8_t x = (joydata.x_pos * (128 - tam_quad)) / 4095;
+            /*uint8_t x = (joydata.x_pos * (128 - tam_quad)) / 4095;
             uint8_t y = (joydata.y_pos * (64 - tam_quad)) / 4095;
             y = (64 - tam_quad) - y;                                 // Inverte o eixo Y
             ssd1306_fill(&ssd, !cor);                                // Limpa a tela
             ssd1306_rect(&ssd, y, x, tam_quad, tam_quad, cor, !cor); // Quadrado 5x5
-            ssd1306_send_data(&ssd);
+            ssd1306_send_data(&ssd);*/
+        ssd1306_fill(&ssd, !cor); // Limpa o display
+        char str_x[5];  // Buffer para armazenar a string
+        char str_y[5];  // Buffer para armazenar a string
+        uint joy_x=joydata.x_pos/4095.0*100;
+        uint joy_y=joydata.y_pos/4095.0*100;
+        printf("Nivel reservatorio=%d %%   Temperatura=%d °C\n",joy_x,joy_y);
+        
+        sprintf(str_x, "%d", joy_x);                     // Converte o inteiro em string
+        sprintf(str_y, "%d", joy_y);                     // Converte o inteiro em string
+        ssd1306_draw_string(&ssd, str_x, 26, 15);   // Desenha uma string
+        ssd1306_draw_string(&ssd, "Vrios%", 9, 5);   // Desenha uma string
+        ssd1306_draw_string(&ssd, "Vchuva%", 69, 5);   // Desenha uma string
+        //ssd1306_draw_string(&ssd, "yC", 107, 5);   // equivale a ° na fonte.h
+        //ssd1306_draw_string(&ssd, "z", 42, 5);     // z equivale a % na font.h
+        ssd1306_draw_string(&ssd, str_y, 91, 15);   // Desenha uma string
+        ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Desenha um retângulo
+        ssd1306_send_data(&ssd); // Atualiza o display//////////////////////////////////////////////////////////////////////////////////////////////////
+        sleep_ms(100);
         }
     }
 }
