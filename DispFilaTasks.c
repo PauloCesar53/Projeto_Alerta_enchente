@@ -33,6 +33,7 @@
 #define ADC_JOYSTICK_Y 26//para versão da BitDogLab representa eixo Y
 #define LED_BLUE 12
 #define LED_GREEN  11
+#define LED_RED  13
 #define tam_quad 10
 
 typedef struct
@@ -83,19 +84,11 @@ void vDisplayTask(void *params)
     {
         if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
         {
-            /*uint8_t x = (joydata.x_pos * (128 - tam_quad)) / 4095;
-            uint8_t y = (joydata.y_pos * (64 - tam_quad)) / 4095;
-            y = (64 - tam_quad) - y;                                 // Inverte o eixo Y
-            ssd1306_fill(&ssd, !cor);                                // Limpa a tela
-            ssd1306_rect(&ssd, y, x, tam_quad, tam_quad, cor, !cor); // Quadrado 5x5
-            ssd1306_send_data(&ssd);*/
         ssd1306_fill(&ssd, !cor); // Limpa o display
         char str_x[5];  // Buffer para armazenar a string
         char str_y[5];  // Buffer para armazenar a string
         uint joy_x=joydata.x_pos/4095.0*100;
         uint joy_y=joydata.y_pos/4095.0*100;
-        printf("Nivel reservatorio=%d %%   Temperatura=%d °C\n",joy_x,joy_y);
-        
         sprintf(str_x, "%d", joy_x);                     // Converte o inteiro em string
         sprintf(str_y, "%d", joy_y);                     // Converte o inteiro em string
         ssd1306_draw_string(&ssd, str_x, 26, 15);   // Desenha uma string
@@ -118,8 +111,6 @@ void vDisplayTask(void *params)
         }else{
             ssd1306_draw_string(&ssd, "Vchuva normal", 15, 48); // Desenha uma string
         }
-        //ssd1306_draw_string(&ssd, "yC", 107, 5);   // equivale a ° na fonte.h
-        //ssd1306_draw_string(&ssd, "z", 42, 5);     // z equivale a % na font.h
         ssd1306_draw_string(&ssd, str_y, 91, 15);   // Desenha uma string
         ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Desenha um retângulo
         ssd1306_send_data(&ssd); // Atualiza o display//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,30 +119,8 @@ void vDisplayTask(void *params)
     }
 }
 
-void vLedGreenTask(void *params)
-{
-    gpio_set_function(LED_GREEN, GPIO_FUNC_PWM);   // Configura GPIO como PWM
-    uint slice = pwm_gpio_to_slice_num(LED_GREEN); // Obtém o slice de PWM
-    pwm_set_wrap(slice, 100);                     // Define resolução (0–100)
-    pwm_set_chan_level(slice, PWM_CHAN_B, 0);     // Duty inicial
-    pwm_set_enabled(slice, true);                 // Ativa PWM
 
-    joystick_data_t joydata;
-    while (true)
-    {
-        if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
-        {
-            // Brilho proporcional ao desvio do centro
-            int16_t desvio_centro = (int16_t)joydata.x_pos - 2000;
-            if (desvio_centro < 0)
-                desvio_centro = -desvio_centro;
-            uint16_t pwm_value = (desvio_centro * 100) / 2048;
-            pwm_set_chan_level(slice, PWM_CHAN_B, pwm_value);
-        }
-        vTaskDelay(pdMS_TO_TICKS(50)); // Atualiza a cada 50ms
-    }
-}
-void vAlertaTask(void *params)//alerta com Buzzer sonoro e LED vermelho
+void vBuzzerTask(void *params)//alerta com Buzzer sonoro 
 {
     //configurando PWM
     uint pwm_wrap = 8000;// definindo valor de wrap referente a 12 bits do ADC
@@ -163,60 +132,72 @@ void vAlertaTask(void *params)//alerta com Buzzer sonoro e LED vermelho
     joystick_data_t joydata;
     while (true)
     {
-        /*if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
+        if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
         {
-            // Brilho proporcional ao desvio do centro
-            int16_t desvio_centro = (int16_t)joydata.x_pos - 2000;
-            if (desvio_centro < 0)
-                desvio_centro = -desvio_centro;
-            uint16_t pwm_value = (desvio_centro * 100) / 2048;
-            pwm_set_chan_level(slice, PWM_CHAN_B, pwm_value);
-        }
-        vTaskDelay(pdMS_TO_TICKS(50)); // Atualiza a cada 50ms*/
-        if(xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE){
-            uint joy_x=joydata.x_pos/4095.0*100;
-            uint joy_y=joydata.y_pos/4095.0*100;
-            if(joy_x>=70 && joy_y<=80){//apenas Volume rios alto
-                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+            uint joy_x = joydata.x_pos / 4095.0 * 100;
+            uint joy_y = joydata.y_pos / 4095.0 * 100;
+            if (joy_x >= 70 && joy_y <= 80)
+            {                                    // apenas Volume rios alto
+                pwm_set_gpio_level(buzzer, 400); // 10% de Duty cycle
                 vTaskDelay(pdMS_TO_TICKS(500));
                 pwm_set_gpio_level(buzzer, 0);
                 vTaskDelay(pdMS_TO_TICKS(500));
-            }else if(joy_y>=80 && joy_x<=70){//apenas Volume chuva alto
-                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+            }
+            else if (joy_y >= 80 && joy_x <= 70)
+            {                                    // apenas Volume chuva alto
+                pwm_set_gpio_level(buzzer, 400); // 10% de Duty cycle
                 vTaskDelay(pdMS_TO_TICKS(1000));
                 pwm_set_gpio_level(buzzer, 0);
                 vTaskDelay(pdMS_TO_TICKS(1000));
-            }else if(joy_x>=80 && joy_y>=70){//volume chuva e rios altos simultaneamente 
-                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+            }
+            else if (joy_x >= 80 && joy_y >= 70)
+            {                                    // volume chuva e rios altos simultaneamente
+                pwm_set_gpio_level(buzzer, 400); // 10% de Duty cycle
                 vTaskDelay(pdMS_TO_TICKS(100));
                 pwm_set_gpio_level(buzzer, 0);
                 vTaskDelay(pdMS_TO_TICKS(100));
-            }else {
+            }
+            else
+            {
                 pwm_set_gpio_level(buzzer, 0);
             }
         }
     }
 }
 
-void vLedBlueTask(void *params)
+void vLedTask(void *params)//Liga lEDs a depender do tipo de alerta 
 {
-    gpio_set_function(LED_BLUE, GPIO_FUNC_PWM);   // Configura GPIO como PWM
-    uint slice = pwm_gpio_to_slice_num(LED_BLUE); // Obtém o slice de PWM
-    pwm_set_wrap(slice, 100);                     // Define resolução (0–100)
-    pwm_set_chan_level(slice, PWM_CHAN_A, 0);     // Duty inicial
-    pwm_set_enabled(slice, true);                 // Ativa PWM
-
+    //definindo LED vermelho 
+    gpio_init(LED_RED);
+    gpio_set_dir(LED_RED , GPIO_OUT);
+    //definindo LED azul 
+    gpio_init(LED_BLUE);
+    gpio_set_dir(LED_BLUE , GPIO_OUT);
+    //definindo LED verde
+    gpio_init(LED_GREEN);
+    gpio_set_dir(LED_GREEN , GPIO_OUT);
+    
     joystick_data_t joydata;
     while (true)
     {
         if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
         {
-            // Brilho proporcional ao desvio do centro
-            int16_t desvio_centro = (int16_t)joydata.y_pos - 2048;
-            if (desvio_centro < 0)
-                desvio_centro = -desvio_centro;
-            uint16_t pwm_value = (desvio_centro * 100) / 2048;
-            pwm_set_chan_level(slice, PWM_CHAN_A, pwm_value);
+            uint joy_x=joydata.x_pos/4095.0*100;
+            uint joy_y=joydata.y_pos/4095.0*100;
+            gpio_put(LED_RED,0);
+            gpio_put(LED_GREEN,0);
+            gpio_put(LED_BLUE,0);
+            if(joy_x>=70 && joy_y<=80){//apenas Volume rios alto (Liga LED azul)
+                gpio_put(LED_BLUE,1);
+            }else if(joy_y>=80 && joy_x<=70){//apenas Volume chuva alto (Liga LED verde)
+                gpio_put(LED_GREEN,1);
+            }else if(joy_x>=80 && joy_y>=70){//volume chuva e rios altos simultaneamente (Liga LED vermelho)
+                gpio_put(LED_RED,1);
+            }else {
+                gpio_put(LED_RED,0);
+                gpio_put(LED_GREEN,0);
+                gpio_put(LED_BLUE,0);
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(50)); // Atualiza a cada 50ms
     }
@@ -247,9 +228,8 @@ int main()
     // Criação das tasks
     xTaskCreate(vJoystickTask, "Joystick Task", 256, NULL, 1, NULL);
     xTaskCreate(vDisplayTask, "Display Task", 512, NULL, 1, NULL);
-    xTaskCreate(vAlertaTask, "LED red Task", 256, NULL, 1, NULL);
-    
-    xTaskCreate(vLedBlueTask, "LED blue Task", 256, NULL, 1, NULL);
+    xTaskCreate(vBuzzerTask, "Buzzer Task", 256, NULL, 1, NULL);
+    xTaskCreate(vLedTask, "LED RGB Task", 256, NULL, 1, NULL);
     // Inicia o agendador
     vTaskStartScheduler();
     panic_unsupported();
