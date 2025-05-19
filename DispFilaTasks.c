@@ -22,6 +22,8 @@
 #include "task.h"
 #include "queue.h"
 #include <stdio.h>
+#define buzzer 21// pino do Buzzer na BitDogLab
+
 
 #define I2C_PORT i2c1
 #define I2C_SDA 14
@@ -149,6 +151,52 @@ void vLedGreenTask(void *params)
         vTaskDelay(pdMS_TO_TICKS(50)); // Atualiza a cada 50ms
     }
 }
+void vAlertaTask(void *params)//alerta com Buzzer sonoro e LED vermelho
+{
+    //configurando PWM
+    uint pwm_wrap = 8000;// definindo valor de wrap referente a 12 bits do ADC
+    gpio_set_function(buzzer, GPIO_FUNC_PWM);
+    uint slice_num = pwm_gpio_to_slice_num(buzzer);
+    pwm_set_wrap(slice_num, pwm_wrap);
+    pwm_set_clkdiv(slice_num, 125.0);//divisor de clock 
+    pwm_set_enabled(slice_num, true);               // Ativa PWM
+    joystick_data_t joydata;
+    while (true)
+    {
+        /*if (xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE)
+        {
+            // Brilho proporcional ao desvio do centro
+            int16_t desvio_centro = (int16_t)joydata.x_pos - 2000;
+            if (desvio_centro < 0)
+                desvio_centro = -desvio_centro;
+            uint16_t pwm_value = (desvio_centro * 100) / 2048;
+            pwm_set_chan_level(slice, PWM_CHAN_B, pwm_value);
+        }
+        vTaskDelay(pdMS_TO_TICKS(50)); // Atualiza a cada 50ms*/
+        if(xQueueReceive(xQueueJoystickData, &joydata, portMAX_DELAY) == pdTRUE){
+            uint joy_x=joydata.x_pos/4095.0*100;
+            uint joy_y=joydata.y_pos/4095.0*100;
+            if(joy_x>=70 && joy_y<=80){//apenas Volume rios alto
+                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+                vTaskDelay(pdMS_TO_TICKS(500));
+                pwm_set_gpio_level(buzzer, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+            }else if(joy_y>=80 && joy_x<=70){//apenas Volume chuva alto
+                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                pwm_set_gpio_level(buzzer, 0);
+                vTaskDelay(pdMS_TO_TICKS(1000));
+            }else if(joy_x>=80 && joy_y>=70){//volume chuva e rios altos simultaneamente 
+                pwm_set_gpio_level(buzzer, 400);//10% de Duty cycle
+                vTaskDelay(pdMS_TO_TICKS(100));
+                pwm_set_gpio_level(buzzer, 0);
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }else {
+                pwm_set_gpio_level(buzzer, 0);
+            }
+        }
+    }
+}
 
 void vLedBlueTask(void *params)
 {
@@ -199,7 +247,8 @@ int main()
     // Criação das tasks
     xTaskCreate(vJoystickTask, "Joystick Task", 256, NULL, 1, NULL);
     xTaskCreate(vDisplayTask, "Display Task", 512, NULL, 1, NULL);
-    xTaskCreate(vLedGreenTask, "LED red Task", 256, NULL, 1, NULL);
+    xTaskCreate(vAlertaTask, "LED red Task", 256, NULL, 1, NULL);
+    
     xTaskCreate(vLedBlueTask, "LED blue Task", 256, NULL, 1, NULL);
     // Inicia o agendador
     vTaskStartScheduler();
