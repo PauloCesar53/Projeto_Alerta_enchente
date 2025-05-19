@@ -1,16 +1,3 @@
-/*
- *  Por: Wilton Lacerda Silva
- *  Data: 10/05/2025
- *
- *  Exemplo do uso de Filas queue no FreeRTOS com Raspberry Pi Pico
- *
- *  Descrição: Leitura do valor do joystick e exibição no display OLED SSD1306
- *  com comunicação I2C. O valor do joystick é lido a cada 100ms e enviado para a fila.
- *  A task de exibição recebe os dados da fila e atualiza o display a cada 100ms.
- *  Os leds são controlados por PWM, com brilho proporcional ao desvio do joystick.
- *  O led verde controla o eixo X e o led azul controla o eixo Y.
- */
-
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
@@ -23,12 +10,14 @@
 #include "queue.h"
 #include <stdio.h>
 #define buzzer 21// pino do Buzzer na BitDogLab
+
 //matriz led
 #include "hardware/pio.h"
 #include "ws2812.pio.h"
 #define IS_RGBW false
 #define NUM_PIXELS 25
 #define WS2812_PIN 7
+
 // Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
 uint8_t led_r = 0;  // Intensidade do vermelho
 uint8_t led_g = 0; // Intensidade do verde
@@ -40,16 +29,17 @@ static inline void put_pixel(uint32_t pixel_grb);
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b);
 void set_one_led(uint8_t r, uint8_t g, uint8_t b);//liga os LEDs escolhidos 
 
-
+//definições para Display 
 #define I2C_PORT i2c1
 #define I2C_SDA 14
 #define I2C_SCL 15
 #define endereco 0x3C
-#define ADC_JOYSTICK_X 27
-#define ADC_JOYSTICK_Y 26//para versão da BitDogLab representa eixo Y
-#define LED_BLUE 12
-#define LED_GREEN  11
-#define LED_RED  13
+
+#define ADC_JOYSTICK_X 27//simula volume dos rios 
+#define ADC_JOYSTICK_Y 26//para versão da BitDogLab representa eixo Y (simulando volume de chuva)
+#define LED_BLUE 12//para alerta de volume dos rios
+#define LED_GREEN  11//para alerta de  volume de chuva
+#define LED_RED  13//alerta chuva e rios simultaneamente 
 #define tam_quad 10
 
 typedef struct
@@ -70,10 +60,10 @@ void vJoystickTask(void *params)
 
     while (true)
     {
-        adc_select_input(0); // GPIO 26 = ADC0
+        adc_select_input(0); // GPIO 26 = ADC0 (Sensor volume Chuva)
         joydata.y_pos = adc_read();
 
-        adc_select_input(1); // GPIO 27 = ADC1
+        adc_select_input(1); // GPIO 27 = ADC1 (Sensor volume rios)
         joydata.x_pos = adc_read();
 
         xQueueSend(xQueueJoystickData, &joydata, 0); // Envia o valor do joystick para a fila
@@ -173,7 +163,7 @@ void vBuzzerTask(void *params)//alerta com Buzzer sonoro
                 pwm_set_gpio_level(buzzer, 0);
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
-            else
+            else//volume rios e chuva em níveis normais (nenhum alerta sonoro)
             {
                 pwm_set_gpio_level(buzzer, 0);
             }
@@ -181,7 +171,7 @@ void vBuzzerTask(void *params)//alerta com Buzzer sonoro
     }
 }
 
-void vLedTask(void *params)//Liga lEDs a depender do tipo de alerta 
+void vLedTask(void *params)//Liga lEDs  RGB depender do tipo de alerta 
 {
     //definindo LED vermelho 
     gpio_init(LED_RED);
@@ -209,7 +199,7 @@ void vLedTask(void *params)//Liga lEDs a depender do tipo de alerta
                 gpio_put(LED_GREEN,1);
             }else if(joy_x>=80 && joy_y>=70){//volume chuva e rios altos simultaneamente (Liga LED vermelho)
                 gpio_put(LED_RED,1);
-            }else {
+            }else{//volume rios e chuva em níveis normais 
                 gpio_put(LED_RED,0);
                 gpio_put(LED_GREEN,0);
                 gpio_put(LED_BLUE,0);
@@ -234,18 +224,15 @@ void vMatrizTask()//task alerta na  Matriz
             
             if(joy_x>=70 && joy_y<=80){//alerta de nivél rio apenas (azul acende)
                 set_one_led(led_r, led_g, 5);//liga azul com intensidade 5
-                vTaskDelay(pdMS_TO_TICKS(1500));
-                set_one_led(0, 0, 0);//apaga matriz
-                vTaskDelay(pdMS_TO_TICKS(500));
             }else if(joy_y>=80 && joy_x<=70){//apenas Volume chuva alto (Liga LED verde)
                 set_one_led(led_r, 5, led_b);// liga verde com intensidade 5
             }else if(joy_x>=80 && joy_y>=70){//volume chuva e rios altos simultaneamente (Liga LED vermelho)
                 set_one_led(5, led_g, led_b);// liga vermelho com intensidade 5
                 vTaskDelay(pdMS_TO_TICKS(500));
-                set_one_led(led_r, led_g, led_b);
+                set_one_led(led_r, led_g, led_b);//apaga matriz
                 vTaskDelay(pdMS_TO_TICKS(500));
             }else{
-                set_one_led(led_r, led_g, led_b);// desliga matriz
+                set_one_led(led_r, led_g, led_b);// apaga matriz  matriz
             }
         }
     }
@@ -284,11 +271,11 @@ int main()
     panic_unsupported();
 }
 bool led_buffer[NUM_PIXELS] = { //Buffer para armazenar quais LEDs estão ligados matriz 5x5
-    0, 0, 0, 0, 0,
-    0, 1, 1, 1, 0,
-    0, 1, 1, 1, 0,
-    0, 1, 1, 1, 0,
-    0, 0, 0, 0, 0};
+    1, 0, 0, 0, 1,
+    0, 1, 0, 1, 0,
+    0, 0, 1, 0, 0,
+    0, 1, 0, 1, 0,
+    1, 0, 0, 0, 1};
 static inline void put_pixel(uint32_t pixel_grb)
 {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
