@@ -27,8 +27,8 @@
 #define I2C_SDA 14
 #define I2C_SCL 15
 #define endereco 0x3C
-#define ADC_JOYSTICK_X 26
-#define ADC_JOYSTICK_Y 27
+#define ADC_JOYSTICK_X 27
+#define ADC_JOYSTICK_Y 26//para versão da BitDogLab representa eixo Y
 #define LED_BLUE 12
 #define LED_GREEN  11
 #define tam_quad 10
