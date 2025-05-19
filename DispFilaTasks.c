@@ -99,6 +99,23 @@ void vDisplayTask(void *params)
         ssd1306_draw_string(&ssd, str_x, 26, 15);   // Desenha uma string
         ssd1306_draw_string(&ssd, "Vrios%", 9, 5);   // Desenha uma string
         ssd1306_draw_string(&ssd, "Vchuva%", 69, 5);   // Desenha uma string
+        ssd1306_line(&ssd, 3, 25, 123, 25, cor);           // Desenha uma linha
+        ssd1306_line(&ssd, 3, 37, 123, 37, cor);           // Desenha uma linha
+        if(joy_x>=70||joy_y>=80){
+            ssd1306_draw_string(&ssd, "Cuidado", 35, 28); // Desenha uma string
+        }
+        if(joy_x>=70){
+            ssd1306_draw_string(&ssd, "Vrios Alto ", 15, 38); // Desenha uma string
+            //adasdsadsadas
+        }else{
+            ssd1306_draw_string(&ssd, "Vrios normal", 15, 38); // Desenha uma string
+        }
+        if(joy_y>=80){
+            ssd1306_draw_string(&ssd, "Vchuva Alto ", 15, 48); // Desenha uma string
+            //adasdsadsadas
+        }else{
+            ssd1306_draw_string(&ssd, "Vchuva normal", 15, 48); // Desenha uma string
+        }
         //ssd1306_draw_string(&ssd, "yC", 107, 5);   // equivale a ° na fonte.h
         //ssd1306_draw_string(&ssd, "z", 42, 5);     // z equivale a % na font.h
         ssd1306_draw_string(&ssd, str_y, 91, 15);   // Desenha uma string
