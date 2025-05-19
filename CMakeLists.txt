@@ -43,6 +43,7 @@ target_link_libraries(${PROJECT_NAME}
         hardware_i2c
         hardware_adc
         hardware_pwm
+        hardware_pio
         FreeRTOS-Kernel 
         FreeRTOS-Kernel-Heap4
         )
