@@ -103,7 +103,7 @@ void vDisplayTask(void *params)
         ssd1306_line(&ssd, 3, 25, 123, 25, cor);           // Desenha uma linha
         ssd1306_line(&ssd, 3, 37, 123, 37, cor);           // Desenha uma linha
         if(joy_x>=70||joy_y>=80){
-            ssd1306_draw_string(&ssd, "Cuidado", 35, 28); // Desenha uma string
+            ssd1306_draw_string(&ssd, "ALERTA", 35, 28); // Desenha uma string
         }
         if(joy_x>=70){
             ssd1306_draw_string(&ssd, "Vrios Alto ", 15, 38); // Desenha uma string
